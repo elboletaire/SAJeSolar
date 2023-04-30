@@ -119,6 +119,7 @@ SENSOR_LIST = {
     "batteryPower",
     "gridDirection",
     "gridPower",
+    "gridPowerAbsolute",
     "h1Online",
     "outPower",
     "outPutDirection",
@@ -414,6 +415,13 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
     SensorEntityDescription(
         key="gridPower",
         icon="mdi:solar-panel-large",
+        native_unit_of_measurement=POWER_WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    SensorEntityDescription(
+        key="gridPowerAbsolute",
+        icon="mdi:solar-panel-large",
+        translation_key="grid_power_absolute",
         native_unit_of_measurement=POWER_WATT,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -909,6 +917,19 @@ class SAJeSolarMeterSensor(SensorEntity):
                 if 'status' in energy:
                     self._state = (energy["status"])
 
+            # dataCountList in energy (from getPlantDetailChart2)
+            if 'dataCountList' in energy:
+                if self._type == 'batteryPowerAbsolute':
+                    if energy['dataCountList'][5][-1] is not None:
+                        self._state = float(energy['dataCountList'][5][-1])
+
+            if self._type == "gridPowerAbsolute":
+                if 'gridPower' in energy["storeDevicePower"]:
+                    self._state = float(energy["storeDevicePower"]["gridPower"])
+                    if 'gridDirection' in energy['storeDevicePower']:
+                        if energy["storeDevicePower"]["gridDirection"] == 1:
+                            self._state = -abs(self._state)
+
             ########################################################################## SAJ h1
             if self.sensors == "h1":
                 if self._type == 'chargeElec':
@@ -1070,12 +1091,8 @@ class SAJeSolarMeterSensor(SensorEntity):
                     if 'plantTreeNum' in energy["getPlantMeterChartData"]['viewBean']:
                         self._state = float(energy["getPlantMeterChartData"]['viewBean']["plantTreeNum"])
 
-
-                # dataCountList
-                if 'dataCountList' in energy:
-                    if self._type == 'batteryPowerAbsolute':
-                        if energy["getPlantMeterChartData"]['dataCountList'][5][-1] is not None:
-                            self._state = float(energy["getPlantMeterChartData"]['dataCountList'][5][-1])
+                # dataCountList in getPlantMeterChartData
+                if 'dataCountList' in energy["getPlantMeterChartData"]:
                     if self._type == 'totalGridPower':
                         if energy["getPlantMeterChartData"]['dataCountList'][4][-1] is not None:
                             self._state = float(energy["getPlantMeterChartData"]['dataCountList'][3][-1])

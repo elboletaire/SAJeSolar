@@ -812,6 +812,8 @@ class SAJeSolarMeterSensor(SensorEntity):
         self._attr_icon = self.entity_description.icon
         self._attr_name = f"{SENSOR_PREFIX} {self._type}"
         self._attr_state_class = self.entity_description.state_class
+        if self.entity_description.translation_key is not None:
+            self._attr_translation_key = self.entity_description.translation_key
         self._attr_native_unit_of_measurement = self.entity_description.native_unit_of_measurement
         # self._attr_suggested_unit_of_measurement = self.entity_description.suggested_unit_of_measurement
         self._attr_device_class = self.entity_description.device_class

@@ -135,6 +135,7 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
         icon="mdi:solar-power-variant",
         native_unit_of_measurement=POWER_WATT,
         device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="runningState",
@@ -175,6 +176,8 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
     SensorEntityDescription(
         key="selfUseRate",
         icon="mdi:solar-panel",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="totalBuyElec",
@@ -220,7 +223,9 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
     SensorEntityDescription(
         key="totalReduceCo2",
         icon="mdi:molecule-co2",
-        native_unit_of_measurement="t"
+        native_unit_of_measurement="t",
+        state_class=SensorStateClass.TOTAL,
+        device_class=SensorDeviceClass.VOLUME_STORAGE,
     ),
     SensorEntityDescription(
         key="isAlarm",
@@ -267,6 +272,7 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
         icon="mdi:solar-panel-large",
         native_unit_of_measurement=ENERGY_KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     SensorEntityDescription(
         key="useElec",
@@ -291,19 +297,27 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
     ),
     SensorEntityDescription(
         key="buyRate",
-        icon="mdi:solar-panel",
+        icon="mdi:transmission-tower",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="sellRate",
         icon="mdi:solar-panel",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="selfConsumedRate1",
         icon="mdi:solar-panel",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="selfConsumedRate2",
         icon="mdi:solar-panel",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="selfConsumedEnergy1",
@@ -329,6 +343,9 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
     SensorEntityDescription(
         key="reduceCo2",
         icon="mdi:molecule-co2",
+        native_unit_of_measurement="t",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        device_class=SensorDeviceClass.VOLUME,
     ),
     SensorEntityDescription(
         key="totalGridPower",
@@ -340,6 +357,7 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
         icon="mdi:flash-outline",
         native_unit_of_measurement=POWER_WATT,
         device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="totalPvgenPower",
@@ -393,6 +411,8 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
         key="batEnergyPercent",
         icon="mdi:battery-charging-70",
         native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="batteryDirection",
@@ -404,25 +424,29 @@ SENSOR_TYPES: Final[tuple[SensorEntityDescription]] = (
         key="batteryPower",
         icon="mdi:solar-panel-large",
         native_unit_of_measurement=POWER_WATT,
+        device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="batteryPowerAbsolute",
         icon="mdi:solar-panel-large",
         native_unit_of_measurement=POWER_WATT,
+        device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="gridPower",
-        icon="mdi:solar-panel-large",
+        icon="mdi:transmission-tower",
         native_unit_of_measurement=POWER_WATT,
+        device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key="gridPowerAbsolute",
-        icon="mdi:solar-panel-large",
+        icon="mdi:transmission-tower",
         translation_key="grid_power_absolute",
         native_unit_of_measurement=POWER_WATT,
+        device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
@@ -585,7 +609,7 @@ class SAJeSolarMeterData(object):
                 return
 
             plantInfo = await response2.json()
-            plantuid = plantInfo['plantList'][self.plant_id]['plantuid']
+            plantuid = "D8495756-F4B6-450F-AC78-E5E4BE46C5B2"
 
 
             # Get API Plant Solar Details
@@ -604,7 +628,7 @@ class SAJeSolarMeterData(object):
 
 
             # getPlantDetailChart2
-            plantuid = plantDetails['plantList'][self.plant_id]['plantuid']
+            plantuid = "D8495756-F4B6-450F-AC78-E5E4BE46C5B2"
 
             deviceSnArr = plantDetails['plantDetail']['snList'][0]
             previousChartDay = today - timedelta(days=1)
@@ -870,7 +894,7 @@ class SAJeSolarMeterSensor(SensorEntity):
                     self._state = float(energy['plantDetail']["income"])
             if self._type == 'selfUseRate':
                 if 'selfUseRate' in energy['plantDetail']:
-                    self._state = energy['plantDetail']["selfUseRate"]
+                    self._state = float(energy['plantDetail']['selfUseRate'].strip('%'))
             if self._type == 'totalBuyElec':
                 if 'totalBuyElec' in energy['plantDetail']:
                     self._state = float(energy['plantDetail']["totalBuyElec"])
@@ -920,16 +944,23 @@ class SAJeSolarMeterSensor(SensorEntity):
                     self._state = (energy["status"])
 
             # dataCountList in energy (from getPlantDetailChart2)
-            if 'dataCountList' in energy:
-                if self._type == 'batteryPowerAbsolute':
-                    if energy['dataCountList'][5][-1] is not None:
-                        self._state = float(energy['dataCountList'][5][-1])
+            if self._type == 'batteryPowerAbsolute':
+                if 'batteryPower' in energy['storeDevicePower']:
+                    self._state = float(energy['storeDevicePower']['batteryPower'])
+                    if 'batteryDirection' in energy['storeDevicePower']:
+                        if energy['storeDevicePower']['batteryDirection'] == -1:
+                            self._state = -abs(self._state)
 
-            if self._type == "gridPowerAbsolute":
-                if 'gridPower' in energy["storeDevicePower"]:
-                    self._state = float(energy["storeDevicePower"]["gridPower"])
+            # if 'dataCountList' in energy:
+            #     if self._type == 'batteryPowerAbsolute':
+            #         if len(energy['dataCountList'][5]) and energy['dataCountList'][5][-1] is not None:
+            #             self._state = float(energy['dataCountList'][5][-1])
+
+            if self._type == 'gridPowerAbsolute':
+                if 'gridPower' in energy['storeDevicePower']:
+                    self._state = float(energy['storeDevicePower']['gridPower'])
                     if 'gridDirection' in energy['storeDevicePower']:
-                        if energy["storeDevicePower"]["gridDirection"] == 1:
+                        if energy['storeDevicePower']['gridDirection'] == 1:
                             self._state = -abs(self._state)
 
             ########################################################################## SAJ h1
@@ -945,7 +976,7 @@ class SAJeSolarMeterSensor(SensorEntity):
                         self._state = float(energy['viewBean']["buyElec"])
                 if self._type == 'buyRate':
                     if 'buyRate' in energy['viewBean']:
-                        self._state = energy['viewBean']["buyRate"]
+                        self._state = float(energy['viewBean']['buyRate'].strip('%'))
                 if self._type == 'pvElec':
                     if 'pvElec' in energy['viewBean']:
                         self._state = float(energy['viewBean']["pvElec"])
@@ -957,19 +988,19 @@ class SAJeSolarMeterSensor(SensorEntity):
                         self._state = float(energy['viewBean']["selfConsumedEnergy2"])
                 if self._type == 'selfConsumedRate1':
                     if 'selfConsumedRate1' in energy['viewBean']:
-                        self._state = energy['viewBean']["selfConsumedRate1"]
+                        self._state = float(energy['viewBean']['selfConsumedRate1'].strip('%'))
                 if self._type == 'selfConsumedRate2':
                     if 'selfConsumedRate2' in energy['viewBean']:
-                        self._state = energy['viewBean']["selfConsumedRate2"]
+                        self._state = float(energy['viewBean']['selfConsumedRate2'].strip('%'))
                 if self._type == 'sellElec':
                     if 'sellElec' in energy['viewBean']:
                         self._state = float(energy['viewBean']["sellElec"])
                 if self._type == 'sellRate':
                     if 'sellRate' in energy['viewBean']:
-                        self._state = energy['viewBean']["sellRate"]
+                        self._state = float(energy['viewBean']['sellRate'].strip('%'))
                 if self._type == 'useElec':
                     if 'useElec' in energy['viewBean']:
-                        self._state = float(energy['viewBean']["useElec"])
+                        self._state = float(energy['viewBean']['useElec'])
                 # storeDevicePower
                 if self._type == 'batCapcity':
                     if 'batCapcity' in energy["storeDevicePower"]:
@@ -1034,6 +1065,12 @@ class SAJeSolarMeterSensor(SensorEntity):
                         else:
                             self._state = energy["storeDevicePower"]["outPutDirection"]
                             _LOGGER.error(f"outPut Direction unknown value: {self._state}")
+                if self._type == 'reduceCo2':
+                    if 'reduceCo2' in energy['viewBean']:
+                        self._state = float(energy['viewBean']['reduceCo2'])
+                if self._type == 'plantTreeNum':
+                    if 'plantTreeNum' in energy['viewBean']:
+                        self._state = float(energy['viewBean']['plantTreeNum'])
                 if self._type == 'pvDirection':
                     if 'pvDirection' in energy["storeDevicePower"]:
                         if energy["storeDevicePower"]["pvDirection"] == 1:
@@ -1079,16 +1116,16 @@ class SAJeSolarMeterSensor(SensorEntity):
                         self._state = float(energy["getPlantMeterChartData"]['viewBean']["reduceCo2"])
                 if self._type == 'buyRate':
                     if 'buyRate' in energy["getPlantMeterChartData"]['viewBean']:
-                        self._state = (energy["getPlantMeterChartData"]['viewBean']["buyRate"])
+                        self._state = float(energy["getPlantMeterChartData"]['viewBean']["buyRate"].strip('%'))
                 if self._type == 'sellRate':
                     if 'sellRate' in energy["getPlantMeterChartData"]['viewBean']:
-                        self._state = (energy["getPlantMeterChartData"]['viewBean']["sellRate"])
+                        self._state = float(energy["getPlantMeterChartData"]['viewBean']["sellRate"].strip('%'))
                 if self._type == 'selfConsumedRate1':
                     if 'selfConsumedRate1' in energy["getPlantMeterChartData"]['viewBean']:
-                        self._state = (energy["getPlantMeterChartData"]['viewBean']["selfConsumedRate1"])
+                        self._state = float(energy["getPlantMeterChartData"]['viewBean']["selfConsumedRate1"].strip('%'))
                 if self._type == 'selfConsumedRate2':
                     if 'selfConsumedRate2' in energy["getPlantMeterChartData"]['viewBean']:
-                        self._state = (energy["getPlantMeterChartData"]['viewBean']["selfConsumedRate2"])
+                        self._state = float(energy["getPlantMeterChartData"]['viewBean']["selfConsumedRate2"].strip('%'))
                 if self._type == 'plantTreeNum':
                     if 'plantTreeNum' in energy["getPlantMeterChartData"]['viewBean']:
                         self._state = float(energy["getPlantMeterChartData"]['viewBean']["plantTreeNum"])
